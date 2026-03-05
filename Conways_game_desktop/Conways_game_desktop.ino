@@ -1,21 +1,21 @@
 /*
- * Game of Life: 6x6 Serial & LED Desktop Companion
- * ULTIMATE VERSION: 4-Generation History Buffer + 5% Turn-by-Turn Mutation
+ * Game of Life: SIZE x SIZE Serial & LED Desktop Companion
+ * ULTIMATE VERSION: Adjustable constants and variations
  */
 
-const int SIZE = 6;
-
 // --- ADJUSTABLE CONSTANTS ---
-const int MUTATION_CHANCE = 25;       // The % chance to revive any given dead cell on the mutation phase, triggered by stagnation
-const int STAGNATION_THRESHOLD = 1;   // How many generations of the same grid before stagnation is triggered
-const int FLIP_CHANCE = 1;            // The % chance for ANY cell to randomly flip every generation, simulating a kind of "cosmic radiation"
-const int GENERATION_INTERVAL = 200;  // The time between generation updates (ms)
-const bool DISPLAY_SERIAL = true;     // Whether or not to display the program output to the serial COM line for testing (true/false)
-const int SERIAL_BAUD_RATE = 19200;    // The baud rate of the serial display, for testing (9600, 19200, 38400, 57600, are common rates - the higher the number, the faster data is transmitted)
+const int SIZE = 6;                     // The size of the grid of LEDs, make sure to adjust the array ledPins[]
+const int MUTATION_CHANCE = 25;         // The % chance to revive any given dead cell on the mutation phase, triggered by stagnation
+const int STAGNATION_THRESHOLD = 1;     // How many generations of the same grid before stagnation is triggered
+const int FLIP_CHANCE = 50;            // The chance for ANY cell to randomly flip every generation, simulating a kind of "cosmic radiation" - in 0.01% chance intervals
+const int GENERATION_INTERVAL = 500;    // The time between generation updates (ms)
+const bool DISPLAY_SERIAL = true;       // Whether or not to display the program output to the serial COM line for testing (true/false)
+const bool STAGNATION_DETECTION = true; // Whether to detect stagnation, and mutate in turn
+const int SERIAL_BAUD_RATE = 19200;     // The baud rate of the serial display, for testing (9600, 19200, 38400, 57600, are common rates - the higher the number, the faster data is transmitted)
 
 // ----------------------------
 
-const int ledPins[36] = 
+const int ledPins[sq(SIZE)] = 
 {
   2, 3, 4, 5, 6, 7,
   8, 9, 10, 11, 12, 13,
@@ -40,7 +40,7 @@ void setup()
   Serial.begin(SERIAL_BAUD_RATE); // Sets the serial baud rate for printing, if selected
   }
   
-  for (int i = 0; i < 36; i++) pinMode(ledPins[i], OUTPUT); // Initializes all pins to OUTPUT mode
+  for (int i = 0; i < sq(SIZE); i++) pinMode(ledPins[i], OUTPUT); // Initializes all pins to OUTPUT mode
   randomSeed(analogRead(A0)); // Seeds the pseudo-random function with analogRead()
   initGrid(); // Randomly initializes the grid
 }
@@ -49,29 +49,32 @@ void loop()
 {
   displayGrid(); // Displays the current grid 
   
-
-  if (isMatchingHistory() || isEmpty()) //If the current grid seems to match up with the grids previous history or is empty...
+  if(STAGNATION_DETECTION)
   {
-    stagnationCounter++; // Counts the stagnation
-  } 
-  else 
-  {
-    stagnationCounter = 0; // Otherwise resets the counter
-  }
-
-  if (stagnationCounter > STAGNATION_THRESHOLD) // If the threshold has been breached...
-  {
-    if(DISPLAY_SERIAL)
+    if (isMatchingHistory() || isEmpty()) //If the current grid seems to match up with the grids previous history or is empty...
     {
-    Serial.println("--- Loop Detected: Mutating ---"); // Prints to the screen that stagnation has occurred...
+     stagnationCounter++; // Counts the stagnation
+    } 
+    else 
+    {
+     stagnationCounter = 0; // Otherwise resets the counter
     }
+  
+
+    if (stagnationCounter > STAGNATION_THRESHOLD) // If the threshold has been breached...
+    {
+     if(DISPLAY_SERIAL)
+     {
+     Serial.println("--- Loop Detected: Mutating ---"); // Prints to the screen that stagnation has occurred...
+     }
     
-    delay(GENERATION_INTERVAL); 
+     delay(GENERATION_INTERVAL); 
     
-    mutate(); // Then mutates the board (revives a certain % of tiles)...
+     mutate(); // Then mutates the board (revives a certain % of tiles)...
     
-    stagnationCounter = 0; // And resets the counter
-    return; 
+     stagnationCounter = 0; // And resets the counter
+     return; 
+    }
   }
 
   saveToHistory(); // Saves the grid every turn
@@ -190,7 +193,7 @@ void computeNextGen()
         newState = (neighbors == 3);                   // Program will determine what the new state of the cell should be...
       }
       
-      if (random(0, 100) < FLIP_CHANCE) 
+      if (random(0, 10000) < FLIP_CHANCE) 
       {
         newState = !newState;                          // A built-in random chance function will have a FLIP_CHANCE % chance to flip the cell beforehand...
       }
