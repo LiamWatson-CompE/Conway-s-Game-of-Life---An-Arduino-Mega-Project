@@ -8,7 +8,7 @@ const int SIZE = 6;                     // The size of the grid of LEDs, make su
 const int MUTATION_CHANCE = 25;         // The % chance to revive any given dead cell on the mutation phase, triggered by stagnation
 const int STAGNATION_THRESHOLD = 1;     // How many generations of the same grid before stagnation is triggered
 const int FLIP_CHANCE = 50;            // The chance for ANY cell to randomly flip every generation, simulating a kind of "cosmic radiation" - in 0.01% chance intervals
-const int GENERATION_INTERVAL = 500;    // The time between generation updates (ms)
+const int GENERATION_INTERVAL = 500;    // The max time between generation updates (ms)
 const bool DISPLAY_SERIAL = true;       // Whether or not to display the program output to the serial COM line for testing (true/false)
 const bool STAGNATION_DETECTION = true; // Whether to detect stagnation, and mutate in turn
 const int SERIAL_BAUD_RATE = 19200;     // The baud rate of the serial display, for testing (9600, 19200, 38400, 57600, are common rates - the higher the number, the faster data is transmitted)
@@ -31,6 +31,7 @@ bool nextGrid[SIZE][SIZE]; // Defines two 6x6 grids of empty data, to be calcula
 bool history[3][SIZE][SIZE]; // An array of three past game states, which are used to detect repetition
 
 int stagnationCounter = 0;
+int potReading = 0;
 unsigned long generation = 0; // The two counters responsible for counting the current state of the game
 
 void setup() 
@@ -41,6 +42,10 @@ void setup()
   }
   
   for (int i = 0; i < sq(SIZE); i++) pinMode(ledPins[i], OUTPUT); // Initializes all pins to OUTPUT mode
+
+  pinMode(A15, OUTPUT);
+  digitalWrite(A15, HIGH); // Begins outputting 5V to the voltage divider potentiometer
+
   randomSeed(analogRead(A0)); // Seeds the pseudo-random function with analogRead()
   initGrid(); // Randomly initializes the grid
 }
@@ -81,7 +86,11 @@ void loop()
 
   computeNextGen(); // Computes the next state of the grid
 
-  delay(GENERATION_INTERVAL); // Waits a certain amount of time specified by the user
+  int potReading = analogRead(A14); 
+  int dynamicDelay = map(potReading, 0, 1023, 10, GENERATION_INTERVAL); // Map the reading to a  range (Min 10ms, Max GENERATION_INTERVALms)
+
+  delay(dynamicDelay);
+
 }
 
 void initGrid() 
